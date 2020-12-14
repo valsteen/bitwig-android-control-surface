@@ -1,19 +1,23 @@
 package com.djcrontab.code.controlsurface
 
 import android.os.Bundle
+import android.view.WindowManager
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.ui.platform.setContent
 import com.djcrontab.code.common.MainContent
 
 
 class MainActivity : AppCompatActivity() {
-    private val controllerStatesViewModel = ControllerStatesViewModel()
-
     override fun onCreate(savedInstanceState: Bundle?) {
+        val controllerStatesViewModel: ControllerStatesViewModel by viewModels()
+
         super.onCreate(savedInstanceState)
 
         setContent {
             MainContent(controllerStatesViewModel)
         }
+
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 }
