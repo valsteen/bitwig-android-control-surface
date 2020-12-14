@@ -15,11 +15,18 @@ class ControllerState(val device: Int, val control: Int, val sendToBitWig: Chann
     private val _name = MutableLiveData("")
     val name: LiveData<String> = _name
 
+    private val _displayValue = MutableLiveData("")
+    val displayValue: LiveData<String> = _displayValue
+
     private val _value = MutableLiveData(0f)
     val value: LiveData<Float> = _value
 
     fun remoteNameChanged(value: String) {
         _name.value = value
+    }
+
+    fun remoteDisplayValueChanged(value: String) {
+        _displayValue.value = value
     }
 
     var pauseRemoteUpdates = false
@@ -43,14 +50,24 @@ class ControllerState(val device: Int, val control: Int, val sendToBitWig: Chann
         val newValue = truncate(value * 1000f) / 1000f
 
         if (newValue != _value.value) {
-            _value.value = value
+            _value.value = newValue
 
             val sendToBitwig = this.sendToBitWig
             CoroutineScope(Dispatchers.IO).launch {
-                val message = "$device,$control,${_value.value}"
+                val message = "value,$device,$control,${_value.value}"
                 Log.v("ControlSurface", message)
                 sendToBitwig.send(message)
             }
+        }
+    }
+
+    fun focus() {
+        val sendToBitwig = this.sendToBitWig
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val message = "focus,$device"
+            Log.v("ControlSurface", message)
+            sendToBitwig.send(message)
         }
     }
 }

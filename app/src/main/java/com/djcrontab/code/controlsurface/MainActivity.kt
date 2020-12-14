@@ -42,11 +42,15 @@ class ControllerStatesViewModel : ViewModel() {
                 CoroutineScope(Dispatchers.Main).launch {
                     if (action == "name") {
                         controllerStates[ControllerKey(device, control)]!!.remoteNameChanged(parts[3])
-                    } else {
+                    } else if (action == "value") {
                         val value = parts[3].toFloat()
                         Log.v("ControlSurface", "set $device $control ${controllerStates[ControllerKey(device, control)]!!.name.value} to $value")
 
                         controllerStates[ControllerKey(device, control)]!!.setValueFromRemote(value)
+                    } else if (action == "display") {
+                        val value = parts[3]
+                        Log.v("ControlSurface", "set $device $control ${controllerStates[ControllerKey(device, control)]!!.name.value} to display $value")
+                        controllerStates[ControllerKey(device, control)]!!.remoteDisplayValueChanged(value)
                     }
                 }
             }

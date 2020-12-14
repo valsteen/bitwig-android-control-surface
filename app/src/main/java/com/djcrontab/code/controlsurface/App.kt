@@ -24,6 +24,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.gesture.doubleTapGestureFilter
 import androidx.compose.ui.gesture.dragGestureFilter
 
 @Composable
@@ -34,6 +35,7 @@ fun Encoder(
     var boxSize by remember { mutableStateOf(IntSize(0, 0)) }
     val name by controlState.name.observeAsState()
     val value by controlState.value.observeAsState()
+    val displayValue by controlState.displayValue.observeAsState()
 
     Box(modifier) {
         Canvas(
@@ -42,6 +44,9 @@ fun Encoder(
                     if (it.width != 0 && it.height != 0) {
                         boxSize = IntSize(it.width, it.height)
                     }
+                }
+                .doubleTapGestureFilter {
+                    controlState.focus()
                 }
                 .dragGestureFilter(
                     dragObserver = object : DragObserver {
@@ -67,6 +72,7 @@ fun Encoder(
                     }
                 )
         ) {
+
             val radius = size.width.coerceAtMost(size.height) * 0.9f / 2f
             val topLeft = Offset(center.x - radius, center.y - radius)
             drawCircle(
@@ -110,12 +116,20 @@ fun Encoder(
             }
         }
 
-        Text(
-            name ?: "",
-            Modifier.align(Alignment.BottomCenter),
-            Color(0, 0, 100),
-            15.sp
-        )
+        Column(Modifier.align(Alignment.BottomCenter)) {
+            Text(
+                text = name ?: "",
+                color = Color(0, 0, 100),
+                fontSize = 12.sp
+            )
+
+            Text(
+                text = displayValue ?: "",
+                color = Color(0, 0, 100),
+                fontSize = 12.sp
+            )
+        }
+
     }
 }
 

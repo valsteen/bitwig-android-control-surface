@@ -48,7 +48,7 @@ class BitwigConnection(
                 } catch (_: IOException) {
 
                 }
-                delay(1000)
+                break
             }
 
         }
@@ -81,16 +81,11 @@ class BitwigConnection(
                     outputStream = clientSocket!!.getOutputStream()
 
                     runBlocking { reader() }
-                } catch (e: IOException) {
-                    Log.v("ControlSurface", "not connected, retrying $e")
-                    Thread.sleep(1000)
-                    continue
-                }
+                } catch (_: IOException) {
 
-                clientSocket?.close()
-                if (Thread.currentThread().isInterrupted) {
-                    break
                 }
+                Log.v("ControlSurface", "not connected, retrying")
+                Thread.sleep(1000)
             }
         }
         readFromRemote.start()
