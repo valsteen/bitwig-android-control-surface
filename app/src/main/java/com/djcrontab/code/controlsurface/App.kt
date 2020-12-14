@@ -1,6 +1,7 @@
 package com.djcrontab.code.common
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
@@ -26,6 +27,7 @@ import kotlin.math.sin
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.gesture.doubleTapGestureFilter
 import androidx.compose.ui.gesture.dragGestureFilter
+import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun Encoder(
@@ -75,14 +77,6 @@ fun Encoder(
 
             val radius = size.width.coerceAtMost(size.height) * 0.9f / 2f
             val topLeft = Offset(center.x - radius, center.y - radius)
-            drawCircle(
-                center = center,
-                color = Color.Black,
-                radius = radius,
-                style = Stroke(1.dp.toPx())
-
-            )
-
             val calculatePhase = { value: Float, base: Float ->
                 (((0.90 * value) * base) - base / 5f + base / 2f)
                     .toFloat()
@@ -91,42 +85,56 @@ fun Encoder(
             val valuePhase = calculatePhase(value ?: 0f, 360f)
             val valuePhaseRadians = calculatePhase(value ?: 0f, (PI * 2f).toFloat())
 
-            translate(topLeft.x, topLeft.y) {
-                drawArc(
-                    color = Color.Black,
-                    startAngle = phaseZero,
-                    sweepAngle = valuePhase - phaseZero,
-                    topLeft = Offset.Zero,
-                    useCenter = false,
-                    size = Size(radius * 2f, radius * 2f),
-                    style = Stroke(width = 8.dp.toPx()),
+            translate(0f, -12.dp.toPx()) {
+                drawCircle(
+                    center = center,
+                    color = Color.White,
+                    radius = radius,
+                    style = Stroke(1.dp.toPx())
                 )
-                translate(radius, radius) {
-                    drawLine(
-                        strokeWidth = 4.dp.toPx(),
-                        cap = StrokeCap.Square,
-                        color = Color.Black,
-                        start = Offset.Zero,
-                        end = Offset(
-                            (cos(valuePhaseRadians) * radius),
-                            (sin(valuePhaseRadians) * radius)
-                        )
+
+                translate(topLeft.x, topLeft.y) {
+                    drawArc(
+                        color = Color.White,
+                        startAngle = phaseZero,
+                        sweepAngle = valuePhase - phaseZero,
+                        topLeft = Offset.Zero,
+                        useCenter = false,
+                        size = Size(radius * 2f, radius * 2f),
+                        style = Stroke(width = 4.dp.toPx()),
                     )
+                    translate(radius, radius) {
+                        drawLine(
+                            strokeWidth = 3.dp.toPx(),
+                            cap = StrokeCap.Square,
+                            color = Color.White,
+                            start = Offset.Zero,
+                            end = Offset(
+                                (cos(valuePhaseRadians) * radius),
+                                (sin(valuePhaseRadians) * radius)
+                            )
+                        )
+                    }
                 }
             }
         }
 
         Column(Modifier.align(Alignment.BottomCenter)) {
             Text(
+                modifier=Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
                 text = name ?: "",
-                color = Color(0, 0, 100),
-                fontSize = 12.sp
+                color = Color(140, 171, 222),
+                fontSize = 14.sp
+
             )
 
             Text(
+                modifier=Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
                 text = displayValue ?: "",
-                color = Color(0, 0, 100),
-                fontSize = 12.sp
+                color = Color(140, 171, 222),
+                fontSize = 14.sp
             )
         }
 
@@ -162,7 +170,7 @@ fun Device(controllerStates: ControllerStatesViewModel, device: Int) {
         for (y in 0..1) {
             for (x in 0..3) {
                 Box(
-                    Modifier.offset(x = boxWidth.dp * x, y = boxHeight.dp * y)
+                    Modifier.offset(x = boxWidth.dp * x + 1.dp, y = boxHeight.dp * y +1.dp).padding(all=1.dp).background(Color.Black)
                 ) {
                     Encoder(
                         controllerStates.get(device, y*4+x),
