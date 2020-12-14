@@ -1,8 +1,8 @@
 package com.djcrontab.code.controlsurface
 
+import android.util.Log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 import java.io.IOException
 import java.io.OutputStream
@@ -34,11 +34,23 @@ class BitwigConnection(
     }
 
     @Suppress("BlockingMethodInNonBlockingContext")
-    suspend fun reader(): Flow<String> {
+    suspend fun reader() {
         val stream = clientSocket!!.getInputStream()
         val reader = stream.bufferedReader()
         while (true) {
-            receiveFromBitwig.send(reader.readLine())
+            // oops, reader.readLine() is null
+            val line = reader.readLine()
+            if (line != null) {
+                receiveFromBitwig.send(line)
+            } else {
+                try {
+                    clientSocket!!.close()
+                } catch (_: IOException) {
+
+                }
+                delay(1000)
+            }
+
         }
     }
 
@@ -56,21 +68,21 @@ class BitwigConnection(
             write(makeByteArray(s))
             return
         }
-        println("socket closed, ignored")
+        Log.v("ControlSurface", "socket closed, ignored")
     }
 
     init {
         val readFromRemote = Thread {
             while (true) {
                 try {
-                    println("connecting.. $host $port")
+                    Log.v("ControlSurface", "connecting.. $host $port")
                     clientSocket = Socket()
                     clientSocket!!.connect(InetSocketAddress(host, port))
                     outputStream = clientSocket!!.getOutputStream()
 
                     runBlocking { reader() }
                 } catch (e: IOException) {
-                    println("not connected, retrying $e")
+                    Log.v("ControlSurface", "not connected, retrying $e")
                     Thread.sleep(1000)
                     continue
                 }

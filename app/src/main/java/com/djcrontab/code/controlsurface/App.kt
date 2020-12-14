@@ -10,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.gesture.DragObserver
-import androidx.compose.ui.gesture.dragGestureFilter
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -19,21 +18,22 @@ import androidx.compose.ui.layout.WithConstraints
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.AmbientDensity
 import androidx.compose.ui.unit.*
-import com.djcrontab.code.controlsurface.ControlKey
-import com.djcrontab.code.controlsurface.ControlState
-import com.djcrontab.code.controlsurface.ControllerStates
+import com.djcrontab.code.controlsurface.ControllerState
+import com.djcrontab.code.controlsurface.ControllerStatesViewModel
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-
+import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.gesture.dragGestureFilter
 
 @Composable
 fun Encoder(
+    controlState: ControllerState,
     modifier: Modifier = Modifier,
-    currentState: ControlState,
     ) {
     var boxSize by remember { mutableStateOf(IntSize(0, 0)) }
-    val state = remember { currentState }
+    val name by controlState.name.observeAsState()
+    val value by controlState.value.observeAsState()
 
     Box(modifier) {
         Canvas(
@@ -52,11 +52,17 @@ fun Encoder(
                             val relX = dragDistance.x / boxSize.width.toFloat() / 4f
                             val relY = -dragDistance.y / boxSize.height.toFloat() / 4f
 
-
-                            state.value.value = (state.value.value + relX + relY).coerceIn(0f, 1f)
-                            state.name.value = "${state.value.value}"
+                            controlState.onValueChanged(((value ?: 0f) + relX + relY).coerceIn(0f, 1f))
 
                             return dragDistance
+                        }
+
+                        override fun onStart(downPosition: Offset) {
+                            controlState.pauseRemoteUpdates = true
+                        }
+
+                        override fun onStop(velocity: Offset) {
+                            controlState.pauseRemoteUpdates
                         }
                     }
                 )
@@ -76,8 +82,8 @@ fun Encoder(
                     .toFloat()
             }
             val phaseZero = calculatePhase(0f, 360f)
-            val valuePhase = calculatePhase(state.value.value, 360f)
-            val valuePhaseRadians = calculatePhase(state.value.value, (PI * 2f).toFloat())
+            val valuePhase = calculatePhase(value ?: 0f, 360f)
+            val valuePhaseRadians = calculatePhase(value ?: 0f, (PI * 2f).toFloat())
 
             translate(topLeft.x, topLeft.y) {
                 drawArc(
@@ -105,7 +111,7 @@ fun Encoder(
         }
 
         Text(
-            state.name.value,
+            name ?: "",
             Modifier.align(Alignment.BottomCenter),
             Color(0, 0, 100),
             15.sp
@@ -114,40 +120,18 @@ fun Encoder(
 }
 
 
-class MainWindow(val controllerStates: ControllerStates) {
-    @Composable
-    fun MainContent() {
-        MaterialTheme {
-            WithConstraints(modifier = Modifier.fillMaxSize()) {
-                val deviceWidth = with(AmbientDensity.current) { constraints.maxWidth / 4 }
-                val deviceHeight = with(AmbientDensity.current) { constraints.maxHeight / 8 }
-                for (y in 0..3) {
-                    for (x in 0..1) {
-                        Box(
-                            Modifier.offset(x = deviceWidth.dp * x, y = deviceHeight.dp * y)
-                        ) {
-                            Device(y*2+x)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun Device(device: Int) {
+@Composable
+fun MainContent(controllerStates: ControllerStatesViewModel) {
+    MaterialTheme {
         WithConstraints(modifier = Modifier.fillMaxSize()) {
-            val boxWidth = with(AmbientDensity.current) { constraints.maxWidth / 16 }
-            val boxHeight = with(AmbientDensity.current) { constraints.maxHeight / 16 }
-            for (y in 0..1) {
-                for (x in 0..3) {
+            val deviceWidth = with(AmbientDensity.current) { constraints.maxWidth / 4 }
+            val deviceHeight = with(AmbientDensity.current) { constraints.maxHeight / 8 }
+            for (y in 0..3) {
+                for (x in 0..1) {
                     Box(
-                        Modifier.offset(x = boxWidth.dp * x, y = boxHeight.dp * y)
+                        Modifier.offset(x = deviceWidth.dp * x, y = deviceHeight.dp * y)
                     ) {
-                        Encoder(
-                            Modifier.size(boxWidth.dp, boxHeight.dp),
-                            controllerStates[ControlKey(device, y*4+x)]!!,
-                        )
+                        Device(controllerStates, y*2+x)
                     }
                 }
             }
@@ -156,4 +140,22 @@ class MainWindow(val controllerStates: ControllerStates) {
 }
 
 
-
+@Composable
+fun Device(controllerStates: ControllerStatesViewModel, device: Int) {
+    WithConstraints(modifier = Modifier.fillMaxSize()) {
+        val boxWidth = with(AmbientDensity.current) { constraints.maxWidth / 16 }
+        val boxHeight = with(AmbientDensity.current) { constraints.maxHeight / 16 }
+        for (y in 0..1) {
+            for (x in 0..3) {
+                Box(
+                    Modifier.offset(x = boxWidth.dp * x, y = boxHeight.dp * y)
+                ) {
+                    Encoder(
+                        controllerStates.get(device, y*4+x),
+                        Modifier.size(boxWidth.dp, boxHeight.dp)
+                    )
+                }
+            }
+        }
+    }
+}

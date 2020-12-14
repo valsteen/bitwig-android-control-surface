@@ -1,66 +1,67 @@
 package com.djcrontab.code.controlsurface
 
 import android.os.Bundle
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.setContent
-import com.djcrontab.code.common.MainWindow
+import androidx.lifecycle.ViewModel
+import com.djcrontab.code.common.MainContent
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlin.math.truncate
 
-class MainActivity : AppCompatActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        val controllerStates = ControllerStates()
+
+class ControllerStatesViewModel : ViewModel() {
+    private val controllerStates = ControllerStates()
+
+    fun get(device: Int, control: Int) : ControllerState {
+        return controllerStates[ControllerKey(device, control)]!!
+    }
+
+    init {
         val sendToBitwig = Channel<String>();
         val receiveFromBitwig = Channel<String>();
 
         for (device in 0..8) {
             for (control in 0..8) {
-                val mutableValue = object : MutableState<Float> {
-                    override fun component1(): Float {
-                        return value
-                    }
-
-                    override fun component2(): (Float) -> Unit {
-                        return { x -> value = x }
-                    }
-
-                    override var value: Float
-                        get() {
-                            return backingValue
-                        }
-                        set(value) {
-                            val newValue = truncate(value * 1000f) / 1000f
-                            if (newValue != backingValue) {
-                                backingValue = newValue
-
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    sendToBitwig.send("$device $control $backingValue")
-                                }
-                            }
-                        }
-
-                    var backingValue : Float = 0f
-                }
-
-                controllerStates[ControlKey(device, control)] = ControlState(
-                        mutableStateOf(control.toString()),
-                        mutableValue)
+                val controlState = ControllerState(device, control, sendToBitWig=sendToBitwig)
+                controllerStates[ControllerKey(device, control)] = controlState
             }
         }
 
-        runBlocking(Dispatchers.IO) {
-            BitwigConnection(sendToBitwig, receiveFromBitwig, "192.168.2.102", 60123)
-        }
+        val controllerStates = this.controllerStates
 
+        CoroutineScope(Dispatchers.IO).launch {
+            BitwigConnection(sendToBitwig, receiveFromBitwig, "192.168.2.102", 60123)
+
+            for (message in receiveFromBitwig) {
+                val parts = message.split(",")
+                val device = parts[0].toInt()
+                val control = parts[1].toInt()
+                val action = parts[2]
+
+                CoroutineScope(Dispatchers.Main).launch {
+                    if (action == "name") {
+                        controllerStates[ControllerKey(device, control)]!!.remoteNameChanged(parts[3])
+                    } else {
+                        val value = parts[3].toFloat()
+                        Log.v("ControlSurface", "set $device $control ${controllerStates[ControllerKey(device, control)]!!.name.value} to $value")
+
+                        controllerStates[ControllerKey(device, control)]!!.setValueFromRemote(value)
+                    }
+                }
+            }
+        }
+    }
+}
+
+class MainActivity : AppCompatActivity() {
+    private val controllerStatesViewModel = ControllerStatesViewModel()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            MainWindow(controllerStates).MainContent()
+            MainContent(controllerStatesViewModel)
         }
     }
 }
