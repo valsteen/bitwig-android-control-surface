@@ -18,8 +18,8 @@ class ControllerState(val device: Int, val control: Int, val sendToBitWig: Chann
     private val _displayValue = MutableLiveData("")
     val displayValue: LiveData<String> = _displayValue
 
-    private val _value = MutableLiveData(0f)
-    val value: LiveData<Float> = _value
+    private val _parameterValue = MutableLiveData(0f)
+    val parameterValue: LiveData<Float> = _parameterValue
 
     fun remoteNameChanged(value: String) {
         _name.value = value
@@ -33,7 +33,7 @@ class ControllerState(val device: Int, val control: Int, val sendToBitWig: Chann
         set(value) {
             if (value != field) {
                 field = value
-                _value.value = lastKnownRemoteValue
+                if (value) _parameterValue.value = lastKnownRemoteValue
             }
         }
     private var lastKnownRemoteValue = 0f
@@ -43,18 +43,18 @@ class ControllerState(val device: Int, val control: Int, val sendToBitWig: Chann
         lastKnownRemoteValue = newValue
         if (pauseRemoteUpdates) return
 
-        _value.value = newValue
+        _parameterValue.value = newValue
     }
 
     fun onValueChanged(value: Float) {
         val newValue = truncate(value * 1000f) / 1000f
 
-        if (newValue != _value.value) {
-            _value.value = newValue
+        if (newValue != _parameterValue.value) {
+            _parameterValue.value = newValue
 
             val sendToBitwig = this.sendToBitWig
             CoroutineScope(Dispatchers.IO).launch {
-                val message = "value,$device,$control,${_value.value}"
+                val message = "value,$device,$control,${_parameterValue.value}"
                 Log.v("ControlSurface", message)
                 sendToBitwig.send(message)
             }

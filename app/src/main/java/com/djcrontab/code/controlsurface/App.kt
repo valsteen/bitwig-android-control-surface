@@ -1,16 +1,18 @@
-package com.djcrontab.code.common
+package com.djcrontab.code.controlsurface
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.gesture.DragObserver
+import androidx.compose.ui.gesture.doubleTapGestureFilter
+import androidx.compose.ui.gesture.dragGestureFilter
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -18,25 +20,22 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.WithConstraints
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.AmbientDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
-import com.djcrontab.code.controlsurface.ControllerState
-import com.djcrontab.code.controlsurface.ControllerStatesViewModel
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.ui.gesture.doubleTapGestureFilter
-import androidx.compose.ui.gesture.dragGestureFilter
-import androidx.compose.ui.text.style.TextAlign
+
+
 
 @Composable
 fun Encoder(
     controlState: ControllerState,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
     ) {
     var boxSize by remember { mutableStateOf(IntSize(0, 0)) }
     val name by controlState.name.observeAsState()
-    val value by controlState.value.observeAsState()
+    val value by controlState.parameterValue.observeAsState()
     val displayValue by controlState.displayValue.observeAsState()
 
     Box(modifier) {

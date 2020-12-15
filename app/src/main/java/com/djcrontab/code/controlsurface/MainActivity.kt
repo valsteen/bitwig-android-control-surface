@@ -5,7 +5,6 @@ import android.view.WindowManager
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.ui.platform.setContent
-import com.djcrontab.code.common.MainContent
 
 
 class MainActivity : AppCompatActivity() {
