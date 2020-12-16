@@ -65,7 +65,7 @@ class ControllerState(val device: Int, val control: Int, val sendToBitWig: Chann
             val sendToBitwig = this.sendToBitWig
             CoroutineScope(Dispatchers.IO).launch {
                 val message = "value,$device,$control,${_parameterValue.value}"
-                Log.v("ControlSurface", message)
+                //Log.v("ControlSurface", message)
                 sendToBitwig.send(message)
             }
         }

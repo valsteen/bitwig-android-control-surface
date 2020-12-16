@@ -9,5 +9,7 @@
     <color name="white">#FFFFFFFF</color>
     <color name="encodertext">#42AAAE</color>
     <color name="encoder">#246A6C</color>
+    <color name="encoderoff">#071313</color>
+    <color name="encoderfill">#9F153F40</color>
     <color name="border">#1C2533</color>
 </resources>

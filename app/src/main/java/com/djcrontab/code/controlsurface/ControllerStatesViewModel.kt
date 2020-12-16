@@ -7,6 +7,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
+val DEVICES = 12
+
 class ControllerStatesViewModel : ViewModel() {
     private val controllerStates = ControllerStates()
     private val deviceStates = mutableListOf<DeviceState>()
@@ -23,9 +25,9 @@ class ControllerStatesViewModel : ViewModel() {
         val sendToBitwig = Channel<String>();
         val receiveFromBitwig = Channel<String>();
 
-        for (device in 0..8) {
+        for (device in 0 until DEVICES) {
             deviceStates.add(DeviceState(device))
-            for (control in 0..8) {
+            for (control in 0..7) {
                 val controlState = ControllerState(device, control, sendToBitWig = sendToBitwig)
                 controllerStates[ControllerKey(device, control)] = controlState
             }
@@ -53,28 +55,28 @@ class ControllerStatesViewModel : ViewModel() {
                         controllerStates[ControllerKey(device, control)]!!.remoteNameChanged(parts[3])
                     } else if (action == "value") {
                         val value = parts[3].toFloat()
-                        Log.v(
-                                "ControlSurface",
-                                "set $device $control ${
-                                    controllerStates[ControllerKey(
-                                            device,
-                                            control
-                                    )]!!.name.value
-                                } to $value"
-                        )
+//                        Log.v(
+//                                "ControlSurface",
+//                                "set $device $control ${
+//                                    controllerStates[ControllerKey(
+//                                            device,
+//                                            control
+//                                    )]!!.name.value
+//                                } to $value"
+//                        )
 
                         controllerStates[ControllerKey(device, control)]!!.setValueFromRemote(value)
                     } else if (action == "display") {
                         val value = parts[3]
-                        Log.v(
-                                "ControlSurface",
-                                "set $device $control ${
-                                    controllerStates[ControllerKey(
-                                            device,
-                                            control
-                                    )]!!.name.value
-                                } to display $value"
-                        )
+//                        Log.v(
+//                                "ControlSurface",
+//                                "set $device $control ${
+//                                    controllerStates[ControllerKey(
+//                                            device,
+//                                            control
+//                                    )]!!.name.value
+//                                } to display $value"
+//                        )
                         controllerStates[ControllerKey(device, control)]!!.remoteDisplayValueChanged(value)
                     }
                 }
