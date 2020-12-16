@@ -21,11 +21,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.WithConstraints
 import androidx.compose.ui.platform.AmbientDensity
-import androidx.compose.ui.res.Resource
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
-import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -39,6 +37,7 @@ fun Encoder(
     val name by controlState.name.observeAsState()
     val value by controlState.parameterValue.observeAsState()
     val displayValue by controlState.displayValue.observeAsState()
+    val encoderColor = colorResource(id = R.color.encoder)
 
     Column {
         Box(Modifier.weight(.6f).fillMaxSize()) {
@@ -86,14 +85,14 @@ fun Encoder(
 
                     drawCircle(
                             center = center,
-                            color = Color.White,
+                            color = encoderColor,
                             radius = radius,
                             style = Stroke(1.dp.toPx())
                     )
 
                     translate(topLeft.x, topLeft.y) {
                         drawArc(
-                                color = Color.White,
+                                color = encoderColor,
                                 startAngle = phaseZero,
                                 sweepAngle = valuePhase - phaseZero,
                                 topLeft = Offset.Zero,
@@ -105,7 +104,7 @@ fun Encoder(
                             drawLine(
                                     strokeWidth = 3.dp.toPx(),
                                     cap = StrokeCap.Square,
-                                    color = Color.White,
+                                    color = encoderColor,
                                     start = Offset.Zero,
                                     end = Offset(
                                             (cos(valuePhaseRadians) * radius),
@@ -123,7 +122,7 @@ fun Encoder(
                 Text(modifier = Modifier.weight(1f).fillMaxWidth(),
                         textAlign = TextAlign.Center,
                         text = name ?: "",
-                        color = colorResource(id = R.color.encoder),
+                        color = colorResource(id = R.color.encodertext),
                         fontSize = 14.sp,
                         lineHeight = 14.1.sp
                 )
@@ -131,7 +130,7 @@ fun Encoder(
                 Text(modifier = Modifier.weight(1f).fillMaxWidth(),
                         textAlign = TextAlign.Center,
                         text = displayValue ?: "",
-                        color = colorResource(id = R.color.encoder),
+                        color = colorResource(id = R.color.encodertext),
                         fontSize = 14.sp,
                         lineHeight = 14.1.sp
                 )
@@ -169,7 +168,7 @@ fun Device(controllerStates: ControllerStatesViewModel, device: Int) {
             val deviceName by controllerStates.getDevice(device).name.observeAsState()
             Text(
                     deviceName ?: "",
-                    color = colorResource(id = R.color.encoder),
+                    color = colorResource(id = R.color.encodertext),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
             )
