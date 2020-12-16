@@ -9,6 +9,16 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlin.math.truncate
 
+
+class DeviceState(val device: Int) {
+    private val _name = MutableLiveData("")
+    val name: LiveData<String> = _name
+
+    fun remoteNameChanged(value: String) {
+        _name.value = value
+    }
+}
+
 data class ControllerKey(val device: Int, val control: Int)
 
 class ControllerState(val device: Int, val control: Int, val sendToBitWig: Channel<String>) {
