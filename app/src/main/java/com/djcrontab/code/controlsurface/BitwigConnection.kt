@@ -38,7 +38,6 @@ class BitwigConnection(
         val stream = clientSocket!!.getInputStream()
         val reader = stream.bufferedReader()
         while (true) {
-            // oops, reader.readLine() is null
             val line = reader.readLine()
             if (line != null) {
                 receiveFromBitwig.send(line)

@@ -77,13 +77,16 @@ fun Odometer(modifier: Modifier = Modifier, controllerState: ControllerState) {
     val encoderColorFillOff = colorResource(id = R.color.encoderoff)
     val textHeight = with(AmbientDensity.current) { 22.sp.toDp() }
 
+
     Box(modifier) {
 
         WithConstraints(Modifier.fillMaxSize()) {
             val boxWidth = constraints.maxWidth
             Canvas(
                 Modifier
-                    .doubleTapGestureFilter { controllerState.focus() }
+                    .doubleTapGestureFilter {
+                        controllerState.focus()
+                    }
                     .dragGestureFilter(
                         dragObserver = object : DragObserver {
                             override fun onDrag(dragDistance: Offset): Offset {
@@ -91,10 +94,7 @@ fun Odometer(modifier: Modifier = Modifier, controllerState: ControllerState) {
                                 val relX = dragDistance.x / boxWidth.toFloat() / 4f
                                 val relY = -dragDistance.y / boxWidth.toFloat() / 4f
 
-                                controllerState.onValueChanged(
-                                    ((value
-                                        ?: 0f) + relX + relY).coerceIn(0f, 1f)
-                                )
+                                controllerState.onValueChanged(((value ?: 0f) + relX + relY).coerceIn(0f, 1f))
 
                                 return dragDistance
                             }
