@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.*
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.reflect.KFunction0
 
 
 @Composable
@@ -108,7 +109,6 @@ fun Odometer(modifier: Modifier = Modifier, controllerState: ControllerState) {
                     )
 
             ) {
-
                 val radius = size.width * 0.9f / 2f
                 val topLeft = Offset(center.x - radius, center.y - radius)
                 val calculatePhase = { value: Float, base: Float ->
@@ -192,7 +192,6 @@ fun Odometer(modifier: Modifier = Modifier, controllerState: ControllerState) {
                         )
                     }
                 }
-
             }
         }
     }
@@ -203,13 +202,14 @@ fun Odometer(modifier: Modifier = Modifier, controllerState: ControllerState) {
 fun MainContent(controllerStates: ControllerStatesViewModel) {
     MaterialTheme {
         Column {
-            for (deviceRow in 0 until DEVICES/2) {
+            for (deviceRow in 0 until DEVICES / 2) {
                 Box(
                     Modifier.background(Color.Black).weight(1f)
                 ) {
                     Row {
                         for (deviceColumn in 0..1) {
-                            val deviceState = controllerStates.getDevice(deviceRow * 2 + deviceColumn)
+                            val deviceState =
+                                controllerStates.getDevice(deviceRow * 2 + deviceColumn)
                             Box(
                                 Modifier.border(
                                     BorderStroke(
@@ -218,16 +218,27 @@ fun MainContent(controllerStates: ControllerStatesViewModel) {
                                     )
                                 ).background(Color.Black).weight(1f)
                             ) {
-                                Device(deviceState.name.collectAsState("")) {
+                                Device(
+                                    deviceState.name.collectAsState(""),
+                                    nextPage = deviceState::nextPage,
+                                    previousPage = deviceState::previousPage
+                                ) {
                                     Column {
                                         for (encoderColumn in 0..1) {
                                             Box(Modifier.weight(1f)) {
                                                 Row {
                                                     for (encoderRow in 0..3) {
-                                                        val controllerState = controllerStates.get(deviceRow * 2 + deviceColumn, encoderColumn * 4 + encoderRow)
+                                                        val controllerState = controllerStates.get(
+                                                            deviceRow * 2 + deviceColumn,
+                                                            encoderColumn * 4 + encoderRow
+                                                        )
                                                         Box(Modifier.weight(1f)) {
                                                             Encoder(controllerState) {
-                                                                Odometer(Modifier.weight(6f).fillMaxSize(), controllerState)
+                                                                Odometer(
+                                                                    Modifier.weight(6f)
+                                                                        .fillMaxSize(),
+                                                                    controllerState
+                                                                )
                                                             }
                                                         }
                                                     }
@@ -247,20 +258,43 @@ fun MainContent(controllerStates: ControllerStatesViewModel) {
 
 
 @Composable
-fun Device(name: State<String>, content: @Composable BoxScope.() -> Unit) {
-    Column() {
-        Box(Modifier.weight(0.1f).fillMaxWidth().padding(top=4.dp, bottom=4.dp).height(with(AmbientDensity.current) { 26.sp.toDp() })) {
-            val deviceName by name
-            Text(
-                deviceName,
-                color = colorResource(id = R.color.encodertext),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+fun Device(
+    name: State<String>,
+    nextPage: KFunction0<Unit>,
+    previousPage: KFunction0<Unit>,
+    content: @Composable() (BoxScope.() -> Unit),
+) {
+    WithConstraints(Modifier.fillMaxSize()) {
+        val boxWidth = constraints.maxWidth
+        Column() {
+            Box(
+                Modifier.weight(0.1f).fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
+                    .height(with(AmbientDensity.current) { 26.sp.toDp() }).dragGestureFilter(
+                        dragObserver = object : DragObserver {
+                            override fun onStop(velocity: Offset) {
+                                if (velocity.x > 0) {
+                                    nextPage()
+                                } else if (velocity.x < -boxWidth / 2) {
+                                    previousPage()
+                                }
+                                super.onStop(velocity)
+                            }
+                        }
+                    )
+            ) {
+                val deviceName by name
 
-        Box(Modifier.weight(0.9f)) {
-            content()
+                Text(
+                    deviceName,
+                    color = colorResource(id = R.color.encodertext),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Box(Modifier.weight(0.9f)) {
+                content()
+            }
         }
     }
 }

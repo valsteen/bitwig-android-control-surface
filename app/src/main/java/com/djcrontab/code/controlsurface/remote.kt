@@ -9,9 +9,24 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.truncate
 
 
-class DeviceState(val device: Int) {
+class DeviceState(
+    val device: Int,
+    val sendToBitwig: Channel<String>
+) {
     val remoteName = MutableStateFlow("")
     val name = remoteName.asStateFlow()
+
+    fun nextPage() {
+        CoroutineScope(Dispatchers.IO).launch {
+            sendToBitwig.send("next,$device")
+        }
+    }
+
+    fun previousPage() {
+        CoroutineScope(Dispatchers.IO).launch {
+            sendToBitwig.send("previous,$device")
+        }
+    }
 }
 
 data class ControllerKey(val device: Int, val control: Int)
@@ -51,7 +66,6 @@ class ControllerState(
     fun onValueChanged(value: Float) {
         val newValue = truncate(value * 1000f) / 1000f
 
-        // seems broken with local changes now ...
         if (newValue != remoteParameterValue.value) {
             remoteParameterValue.value = newValue
             lastKnownValue = newValue

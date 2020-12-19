@@ -25,7 +25,7 @@ class ControllerStatesViewModel : ViewModel() {
         val sendToBitwig = Channel<String>(1000);
 
         for (device in 0 until DEVICES) {
-            deviceStates.add(DeviceState(device))
+            deviceStates.add(DeviceState(device, sendToBitwig))
             for (control in 0..7) {
                 val controlState =
                     ControllerState(device, control, sendToBitwig = sendToBitwig, viewModelScope)
