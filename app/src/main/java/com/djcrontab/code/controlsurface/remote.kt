@@ -35,14 +35,14 @@ class ControllerState(
         set(value) {
             if (value != field) {
                 field = value
-                if (value) remoteParameterValue.value = lastKnownRemoteValue
+                if (value) remoteParameterValue.value = lastKnownValue
             }
         }
-    private var lastKnownRemoteValue = 0f
+    private var lastKnownValue = 0f
 
     fun setValueFromRemote(value: Float) {
         val newValue = truncate(value * 1000f) / 1000f
-        lastKnownRemoteValue = newValue
+        lastKnownValue = newValue
         if (!pauseRemoteUpdates) {
             remoteParameterValue.value = newValue
         }
@@ -54,6 +54,7 @@ class ControllerState(
         // seems broken with local changes now ...
         if (newValue != remoteParameterValue.value) {
             remoteParameterValue.value = newValue
+            lastKnownValue = newValue
 
             val message = "value,$device,$control,${remoteParameterValue.value}"
 
