@@ -1,36 +1,17 @@
 package com.djcrontab.code.controlsurface
 
 import android.util.Log
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlin.coroutines.CoroutineContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.truncate
-import kotlin.reflect.KMutableProperty0
 
-
-fun conflateUpdate(jobProperty: KMutableProperty0<Job?>, context: CoroutineContext, setter: suspend () -> Unit): Job {
-    val job : Job? = jobProperty.get()
-    if (job != null && job.isActive) {
-        job.cancel()
-    }
-
-    return CoroutineScope(context).launch {setter()}.apply {
-        jobProperty.set(this)
-    }
-}
 
 class DeviceState(val device: Int) {
-    private val _name = MutableLiveData("")
-    val name: LiveData<String> = _name
-
-    var remoteNameChangedJob : Job? = null
-    fun remoteNameChanged(value: String) {
-        conflateUpdate(this::remoteNameChangedJob, Dispatchers.Main) {
-            _name.value = value
-        }
-    }
+    val remoteName = MutableStateFlow("")
+    val name = remoteName.asStateFlow()
 }
 
 data class ControllerKey(val device: Int, val control: Int)
@@ -38,75 +19,75 @@ data class ControllerKey(val device: Int, val control: Int)
 class ControllerState(
     val device: Int,
     val control: Int,
-    val sendToBitWig: Channel<String>,
+    val sendToBitwig: Channel<String>,
     val viewModelScope: CoroutineScope
 ) {
-    private val _name = MutableLiveData("")
-    val name: LiveData<String> = _name
+    val remoteName = MutableStateFlow("")
+    val name = remoteName.asStateFlow()
 
-    private val _displayValue = MutableLiveData("")
-    val displayValue: LiveData<String> = _displayValue
+    val remoteDisplayValue = MutableStateFlow("")
+    val displayValue = remoteDisplayValue.asStateFlow()
 
-    private val _parameterValue = MutableLiveData(0f)
-    val parameterValue: LiveData<Float> = _parameterValue
+    val remoteParameterValue = MutableStateFlow(0f)
+    val parameterValue = remoteParameterValue.asStateFlow()
 
-    var remoteNameChangedJob : Job? = null
-    fun remoteNameChanged(value: String): Job? {
-        return conflateUpdate(this::remoteNameChangedJob, Dispatchers.Main) {
-            _name.value = value
-        }
-    }
-
-    var remoteDisplayValueChangedJob : Job? = null
-    fun remoteDisplayValueChanged(value: String): Job? {
-        return conflateUpdate(this::remoteDisplayValueChangedJob, Dispatchers.Main) {
-            _displayValue.value = value
-        }
-    }
-
-    var pauseRemoteUpdates = false
+    private var pauseRemoteUpdates = false
         set(value) {
             if (value != field) {
                 field = value
-                if (value) _parameterValue.postValue(lastKnownRemoteValue)
+                if (value) remoteParameterValue.value = lastKnownRemoteValue
             }
         }
     private var lastKnownRemoteValue = 0f
 
-    var remoteValueChangedJob : Job? = null
-    fun remoteValueChanged(value: Float): Job? {
+    fun setValueFromRemote(value: Float) {
         val newValue = truncate(value * 1000f) / 1000f
         lastKnownRemoteValue = newValue
-        if (pauseRemoteUpdates) return null
-
-        return conflateUpdate(this::remoteValueChangedJob, Dispatchers.Main) {
-            _parameterValue.value = newValue
+        if (!pauseRemoteUpdates) {
+            remoteParameterValue.value = newValue
         }
     }
 
-    var valueChangedJob : Job? = null
-    fun onValueChanged(value: Float): Job? {
+    fun onValueChanged(value: Float) {
         val newValue = truncate(value * 1000f) / 1000f
 
-        if (newValue != _parameterValue.value) {
-            _parameterValue.value = newValue
+        // seems broken with local changes now ...
+        if (newValue != remoteParameterValue.value) {
+            remoteParameterValue.value = newValue
 
-            val message = "value,$device,$control,${_parameterValue.value}"
+            val message = "value,$device,$control,${remoteParameterValue.value}"
 
-            return conflateUpdate(this::valueChangedJob, Dispatchers.IO + viewModelScope.coroutineContext) {
-                this.sendToBitWig.send(message)
+            CoroutineScope(Dispatchers.IO + viewModelScope.coroutineContext).launch {
+                withContext(Dispatchers.IO) {
+                    this@ControllerState.sendToBitwig.send(message)
+                }
             }
         }
-        return null
     }
 
     fun focus() {
-        val sendToBitwig = this.sendToBitWig
-
         CoroutineScope(Dispatchers.IO + viewModelScope.coroutineContext).launch {
             val message = "focus,$device"
             Log.v("ControlSurface", message)
-            sendToBitwig.send(message)
+            withContext(Dispatchers.IO) {
+                this@ControllerState.sendToBitwig.send(message)
+            }
+        }
+    }
+
+    var touched = MutableLiveData(false)
+
+    init {
+        touched.observeForever {
+            Log.v("touched", "touched $it")
+            this.pauseRemoteUpdates = it
+            CoroutineScope(Dispatchers.IO + viewModelScope.coroutineContext).launch {
+                val message = "touch,$device,$control,${if (it) 1 else 0}"
+                Log.v("ControlSurface", message)
+                withContext(Dispatchers.IO) {
+                    this@ControllerState.sendToBitwig.send(message)
+                }
+            }
         }
     }
 }

@@ -8,13 +8,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.State
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.gesture.DragObserver
-import androidx.compose.ui.gesture.doubleTapGestureFilter
-import androidx.compose.ui.gesture.dragGestureFilter
+import androidx.compose.ui.gesture.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -31,59 +30,56 @@ import kotlin.math.sin
 
 @Composable
 fun Encoder(
-    controllerState: ControllerState
+    controllerState: ControllerState,
+    content: @Composable ColumnScope.() -> Unit
 ) {
-    val name by controllerState.name.observeAsState()
-    val displayValue by controllerState.displayValue.observeAsState()
+    val name by controllerState.name.collectAsState("")
+    val displayValue by controllerState.displayValue.collectAsState("")
+    val touched by controllerState.touched.observeAsState(false)
 
-    Column {
-        val textHeight = with(AmbientDensity.current) { 22.sp.toDp() }
-
-        Spacer(modifier = Modifier.preferredHeight(2.dp).weight(1f))
-
-        Box(Modifier.weight(2f).fillMaxWidth().height(textHeight).padding(top=3.dp)) {
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                text = name ?: "",
-                color = colorResource(id = R.color.encodertext),
-                fontSize = 14.sp,
-            )
-        }
-        Spacer(modifier = Modifier.preferredHeight(3.dp).weight(1.9f))
-
-        Odometer(Modifier.weight(6f).fillMaxSize(), controllerState)
-
-        Spacer(modifier = Modifier.preferredHeight(4.dp).weight(2f))
+    Column(Modifier.background(if (touched) colorResource(id = R.color.encodertouched) else Color.Black)) {
 
         Text(
-            modifier = Modifier.weight(1.5f).fillMaxWidth().height(textHeight).padding(bottom=2.dp),
+            modifier = Modifier.weight(2.5f).fillMaxWidth(),
             textAlign = TextAlign.Center,
-            text = displayValue ?: "",
+            text = name,
+            color = colorResource(id = R.color.encodertext),
+            fontSize = 14.sp,
+        )
+
+        Text(
+            modifier = Modifier.weight(3f).fillMaxWidth().padding(bottom = 4.dp),
+            textAlign = TextAlign.Center,
+            text = displayValue,
             color = colorResource(id = R.color.encodertext),
             fontSize = 14.sp
         )
 
-        Spacer(modifier = Modifier.preferredHeight(2.dp).weight(1.5f))
+        content()
+
+        Spacer(modifier = Modifier.preferredHeight(3.dp).weight(1.9f))
     }
 }
 
 
 @Composable
 fun Odometer(modifier: Modifier = Modifier, controllerState: ControllerState) {
-    val value by controllerState.parameterValue.observeAsState()
+    val value by controllerState.parameterValue.collectAsState(0f)
     val encoderColor = colorResource(id = R.color.encoder)
     val encoderColorFill = colorResource(id = R.color.encoderfill)
     val encoderColorFillOff = colorResource(id = R.color.encoderoff)
     val textHeight = with(AmbientDensity.current) { 22.sp.toDp() }
 
-
     Box(modifier) {
-
         WithConstraints(Modifier.fillMaxSize()) {
             val boxWidth = constraints.maxWidth
             Canvas(
                 Modifier
+                    .pressIndicatorGestureFilter(onStart = {
+                        controllerState.touched.value = true
+                    }, onStop = {
+                        controllerState.touched.value = false
+                    })
                     .doubleTapGestureFilter {
                         controllerState.focus()
                     }
@@ -94,20 +90,23 @@ fun Odometer(modifier: Modifier = Modifier, controllerState: ControllerState) {
                                 val relX = dragDistance.x / boxWidth.toFloat() / 4f
                                 val relY = -dragDistance.y / boxWidth.toFloat() / 4f
 
-                                controllerState.onValueChanged(((value ?: 0f) + relX + relY).coerceIn(0f, 1f))
+                                controllerState.onValueChanged(
+                                    (value + relX + relY).coerceIn(0f, 1f)
+                                )
 
                                 return dragDistance
                             }
 
                             override fun onStart(downPosition: Offset) {
-                                controllerState.pauseRemoteUpdates = true
+                                controllerState.touched.value = true
                             }
 
                             override fun onStop(velocity: Offset) {
-                                controllerState.pauseRemoteUpdates
+                                controllerState.touched.value = false
                             }
                         }
                     )
+
             ) {
 
                 val radius = size.width * 0.9f / 2f
@@ -116,8 +115,8 @@ fun Odometer(modifier: Modifier = Modifier, controllerState: ControllerState) {
                     value * base / 2f - base / 2f
                 }
                 val phaseZero = calculatePhase(0f, 360f)
-                val valuePhase = calculatePhase(value ?: 0f, 360f)
-                val valuePhaseRadians = calculatePhase(value ?: 0f, (PI * 2f).toFloat())
+                val valuePhase = calculatePhase(value, 360f)
+                val valuePhaseRadians = calculatePhase(value, (PI * 2f).toFloat())
 
                 translate(topLeft.x, topLeft.y + textHeight.toPx()) {
                     drawArc(
@@ -204,13 +203,13 @@ fun Odometer(modifier: Modifier = Modifier, controllerState: ControllerState) {
 fun MainContent(controllerStates: ControllerStatesViewModel) {
     MaterialTheme {
         Column {
-            for (y in 0 until DEVICES/2) {
+            for (deviceRow in 0 until DEVICES/2) {
                 Box(
-                    Modifier.border(BorderStroke(1.dp, colorResource(id = R.color.border)))
-                        .background(Color.Black).weight(1f)
+                    Modifier.background(Color.Black).weight(1f)
                 ) {
                     Row {
-                        for (x in 0..1) {
+                        for (deviceColumn in 0..1) {
+                            val deviceState = controllerStates.getDevice(deviceRow * 2 + deviceColumn)
                             Box(
                                 Modifier.border(
                                     BorderStroke(
@@ -219,7 +218,24 @@ fun MainContent(controllerStates: ControllerStatesViewModel) {
                                     )
                                 ).background(Color.Black).weight(1f)
                             ) {
-                                Device(controllerStates, y * 2 + x)
+                                Device(deviceState.name.collectAsState("")) {
+                                    Column {
+                                        for (encoderColumn in 0..1) {
+                                            Box(Modifier.weight(1f)) {
+                                                Row {
+                                                    for (encoderRow in 0..3) {
+                                                        val controllerState = controllerStates.get(deviceRow * 2 + deviceColumn, encoderColumn * 4 + encoderRow)
+                                                        Box(Modifier.weight(1f)) {
+                                                            Encoder(controllerState) {
+                                                                Odometer(Modifier.weight(6f).fillMaxSize(), controllerState)
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -231,31 +247,20 @@ fun MainContent(controllerStates: ControllerStatesViewModel) {
 
 
 @Composable
-fun Device(controllerStates: ControllerStatesViewModel, device: Int) {
+fun Device(name: State<String>, content: @Composable BoxScope.() -> Unit) {
     Column() {
         Box(Modifier.weight(0.1f).fillMaxWidth().padding(top=4.dp, bottom=4.dp).height(with(AmbientDensity.current) { 26.sp.toDp() })) {
-            val deviceName by controllerStates.getDevice(device).name.observeAsState()
+            val deviceName by name
             Text(
-                deviceName ?: "",
+                deviceName,
                 color = colorResource(id = R.color.encodertext),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
         }
+
         Box(Modifier.weight(0.9f)) {
-            Column {
-                for (y in 0..1) {
-                    Box(Modifier.weight(1f)) {
-                        Row {
-                            for (x in 0..3) {
-                                Box(Modifier.weight(1f)) {
-                                    Encoder(controllerStates.get(device, y * 4 + x))
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            content()
         }
     }
 }

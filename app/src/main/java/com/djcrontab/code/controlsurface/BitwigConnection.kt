@@ -1,8 +1,12 @@
 package com.djcrontab.code.controlsurface
 
+import android.os.Looper.loop
 import android.util.Log
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.asLiveData
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.runBlocking
 import java.io.IOException
 import java.io.OutputStream
@@ -12,12 +16,10 @@ import java.net.Socket
 
 class BitwigConnection(
     val sendToBitwig: Channel<String>,
-    val receiveFromBitwig: Channel<String>,
     val host: String,
     val port: Int
 ) {
     private var clientSocket: Socket? = null
-    private var outputStream: OutputStream? = null
 
     fun makeByteArray(s: String): ByteArray {
         val asByteArray = s.toByteArray()
@@ -33,66 +35,76 @@ class BitwigConnection(
         return header + asByteArray
     }
 
-    @Suppress("BlockingMethodInNonBlockingContext")
-    suspend fun reader() {
-        val stream = clientSocket!!.getInputStream()
-        val reader = stream.bufferedReader()
-        while (true) {
-            val line = reader.readLine()
-            if (line != null) {
-                receiveFromBitwig.send(line)
-            } else {
-                try {
-                    clientSocket!!.close()
-                } catch (_: IOException) {
+    private val readerChannel = Channel<String>()
 
-                }
-                break
+    fun reader(): Flow<String> {
+        return flow {
+            for (line in readerChannel) {
+                emit(line)
             }
-
         }
     }
 
-    suspend fun writeloop() {
-        while (true) try {
-            out(sendToBitwig.receive())
-        } catch (e: IOException) {
-            print("Not connected... retrying")
-            delay(1000)
+    fun close() {
+        if (clientSocket != null) {
+            try {
+                clientSocket!!.close()
+            } catch (e: IOException) {
+
+            }
         }
     }
 
-    fun out(s: String) {
-        outputStream?.apply {
-            write(makeByteArray(s))
-            return
-        }
-        Log.v("ControlSurface", "socket closed, ignored")
-    }
+    suspend fun start() {
+        Log.v("ControlSurface", "connecting.. $host $port")
+        val connected = MutableStateFlow(false)
 
-    init {
-        val readFromRemote = Thread {
-            while (true) {
-                try {
-                    Log.v("ControlSurface", "connecting.. $host $port")
+        val writerThread = Thread {
+            runBlocking {
+                while (true) try {
                     clientSocket = Socket()
                     clientSocket!!.connect(InetSocketAddress(host, port))
-                    outputStream = clientSocket!!.getOutputStream()
 
-                    runBlocking { reader() }
-                } catch (_: IOException) {
+                    connected.value = true
+                    val outputStream = clientSocket!!.getOutputStream()
 
+                    for (message in sendToBitwig) {
+                        outputStream.write(makeByteArray(message))
+                    }
+                } catch (e: IOException) {
+                    connected.value = false
+                    close()
+                    print("Not connected... retrying")
+                    delay(1000)
                 }
-                Log.v("ControlSurface", "not connected, retrying")
-                Thread.sleep(1000)
             }
         }
-        readFromRemote.start()
 
-        val writeToRemote = Thread {
-            runBlocking { writeloop() }
+        val readerThread = Thread() {
+            runBlocking {
+                while(true) {
+                    while (true) {
+                        if (connected.first()) break
+                    }
+                    try {
+                        val stream = clientSocket!!.getInputStream()
+                        val reader = stream.bufferedReader()
+                        while (true) {
+                            val line = reader.readLine()
+                            if (line != null) {
+                                readerChannel.send(line)
+                            } else {
+                                break
+                            }
+                        }
+                    } catch (_: IOException) {
+                    }
+                    close()
+                }
+            }
         }
 
-        writeToRemote.start()
+        writerThread.start()
+        readerThread.start()
     }
 }

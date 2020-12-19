@@ -11,5 +11,6 @@
     <color name="encoder">#246A6C</color>
     <color name="encoderoff">#071313</color>
     <color name="encoderfill">#9F153F40</color>
-    <color name="border">#1C2533</color>
+    <color name="encodertouched">#9F0B2122</color>
+    <color name="border">#10151C</color>
 </resources>
