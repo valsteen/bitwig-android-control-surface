@@ -1,6 +1,7 @@
 package com.djcrontab.code.controlsurface
 
 import android.util.Log
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.MutableLiveData
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -15,6 +16,12 @@ class DeviceState(
 ) {
     val remoteName = MutableStateFlow("")
     val name = remoteName.asStateFlow()
+
+    val remoteColor = MutableStateFlow(Color(0,0,0))
+    val color = remoteColor.asStateFlow()
+
+    val remotePlaying = MutableStateFlow(false)
+    val playing = remotePlaying.asStateFlow()
 
     fun nextPage() {
         CoroutineScope(Dispatchers.IO).launch {

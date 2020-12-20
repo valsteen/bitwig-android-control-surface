@@ -1,6 +1,7 @@
 package com.djcrontab.code.controlsurface
 
 import android.util.Log
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
@@ -45,9 +46,23 @@ class ControllerStatesViewModel : ViewModel() {
                     val parts = message.split(",")
                     val device = parts[0].toInt()
 
-                    if (parts[1] == "devicename") {
-                        deviceStates[device].remoteName.value = parts[2]
-                        return@collect
+                    when (parts[1]) {
+                        "devicename" -> {
+                            deviceStates[device].remoteName.value = parts[2]
+                            return@collect
+                        }
+                        "playing" -> {
+                            val isPlaying = parts[2].toInt() > 0
+                            deviceStates[device].remotePlaying.value = isPlaying
+                            return@collect
+                        }
+                        "color" -> {
+                            val red = parts[2].toInt()
+                            val green = parts[3].toInt()
+                            val blue = parts[4].toInt()
+                            deviceStates[device].remoteColor.value = Color(red, green, blue)
+                            return@collect
+                        }
                     }
 
                     val control = parts[1].toInt()

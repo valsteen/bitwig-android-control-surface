@@ -10,6 +10,7 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.State
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -23,7 +24,6 @@ import androidx.compose.ui.platform.AmbientDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
-import androidx.lifecycle.LiveData
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -203,22 +203,26 @@ fun Odometer(modifier: Modifier = Modifier, controllerState: ControllerState) {
 fun MainContent(controllerStates: ControllerStatesViewModel) {
     var page by mutableStateOf(0)
 
-    class PageChange : DragObserver {
-                        override fun onStop(velocity: Offset) {
-                            if (velocity.x > 0) {
-                                page -= 1
-                                if (page < 0) page += PAGES
-                            } else if (velocity.x < 0) {
-                                page = (page + 1) % PAGES
-                            }
-                            super.onStop(velocity)
-                        }
-                    }
+    fun nextPage() {
+        page = (page + 1) % PAGES
+    }
 
+    fun previousPage() {
+        page -= 1
+        if (page < 0) page += PAGES
+    }
 
     MaterialTheme() {
         Column(Modifier.background(Color.Black)) {
-            Box(Modifier.weight(0.2f).fillMaxWidth().dragGestureFilter(PageChange()))
+            Row(Modifier.weight(0.2f).fillMaxWidth()) {
+                Box(Modifier.fillMaxHeight().weight(0.2f).pressIndicatorGestureFilter({
+                    previousPage()
+                }))
+                Box(Modifier.fillMaxHeight().weight(0.2f).pressIndicatorGestureFilter({
+                    nextPage()
+                }))
+            }
+
             for (deviceRow in 0 until DEVICES_PER_PAGE / 2) {
                 Box(
                     Modifier.weight(1f)
@@ -239,7 +243,9 @@ fun MainContent(controllerStates: ControllerStatesViewModel) {
                                     deviceState.name.collectAsState(""),
                                     nextPage = deviceState::nextPage,
                                     previousPage = deviceState::previousPage,
-                                    pin = deviceState::pin
+                                    pin = deviceState::pin,
+                                    color = deviceState.color.collectAsState(Color(0,0,0)),
+                                    isPlaying = deviceState.playing.collectAsState(false)
                                 ) {
                                     Column {
                                         for (encoderColumn in 0..1) {
@@ -270,9 +276,16 @@ fun MainContent(controllerStates: ControllerStatesViewModel) {
                     }
                 }
             }
-            Box(Modifier.weight(0.2f).fillMaxWidth().dragGestureFilter(PageChange()))
+            Row(Modifier.weight(0.2f).fillMaxWidth()) {
+                Box(Modifier.fillMaxHeight().weight(0.2f).pressIndicatorGestureFilter({
+                    previousPage()
+                }))
+                Box(Modifier.fillMaxHeight().weight(0.2f).pressIndicatorGestureFilter({
+                    nextPage()
+                }))
+            }
         }
-    }
+    }   
 }
 
 
@@ -282,6 +295,8 @@ fun Device(
     nextPage: KFunction0<Unit>,
     previousPage: KFunction0<Unit>,
     pin: KFunction0<Unit>,
+    color: State<Color>,
+    isPlaying: State<Boolean>,
     content: @Composable() (BoxScope.() -> Unit),
 ) {
     WithConstraints(Modifier.fillMaxSize()) {
@@ -304,6 +319,11 @@ fun Device(
                     }
             ) {
                 val deviceName by name
+                val deviceColor by color
+                val playing by isPlaying
+
+                Box(Modifier.padding(start=10.dp).height(5.dp).width(1.dp).background(color = deviceColor).align(Alignment.CenterStart))
+                Box(Modifier.padding(end=10.dp).height(5.dp).width(1.dp).align(Alignment.CenterEnd).background(color = if (playing) colorResource(id = R.color.encodertext) else Color.Black))
 
                 Text(
                     deviceName,
