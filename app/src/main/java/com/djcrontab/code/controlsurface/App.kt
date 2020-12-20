@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.AmbientDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
+import androidx.lifecycle.LiveData
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -200,16 +201,32 @@ fun Odometer(modifier: Modifier = Modifier, controllerState: ControllerState) {
 
 @Composable
 fun MainContent(controllerStates: ControllerStatesViewModel) {
-    MaterialTheme {
-        Column {
-            for (deviceRow in 0 until DEVICES / 2) {
+    var page by mutableStateOf(0)
+
+    class PageChange : DragObserver {
+                        override fun onStop(velocity: Offset) {
+                            if (velocity.x > 0) {
+                                page -= 1
+                                if (page < 0) page += PAGES
+                            } else if (velocity.x < 0) {
+                                page = (page + 1) % PAGES
+                            }
+                            super.onStop(velocity)
+                        }
+                    }
+
+
+    MaterialTheme() {
+        Column(Modifier.background(Color.Black)) {
+            Box(Modifier.weight(0.2f).fillMaxWidth().dragGestureFilter(PageChange()))
+            for (deviceRow in 0 until DEVICES_PER_PAGE / 2) {
                 Box(
-                    Modifier.background(Color.Black).weight(1f)
+                    Modifier.weight(1f)
                 ) {
                     Row {
                         for (deviceColumn in 0..1) {
                             val deviceState =
-                                controllerStates.getDevice(deviceRow * 2 + deviceColumn)
+                                controllerStates.getDevice(deviceRow * 2 + deviceColumn + page * DEVICES_PER_PAGE)
                             Box(
                                 Modifier.border(
                                     BorderStroke(
@@ -221,7 +238,8 @@ fun MainContent(controllerStates: ControllerStatesViewModel) {
                                 Device(
                                     deviceState.name.collectAsState(""),
                                     nextPage = deviceState::nextPage,
-                                    previousPage = deviceState::previousPage
+                                    previousPage = deviceState::previousPage,
+                                    pin = deviceState::pin
                                 ) {
                                     Column {
                                         for (encoderColumn in 0..1) {
@@ -229,7 +247,7 @@ fun MainContent(controllerStates: ControllerStatesViewModel) {
                                                 Row {
                                                     for (encoderRow in 0..3) {
                                                         val controllerState = controllerStates.get(
-                                                            deviceRow * 2 + deviceColumn,
+                                                            deviceRow * 2 + deviceColumn + page * DEVICES_PER_PAGE,
                                                             encoderColumn * 4 + encoderRow
                                                         )
                                                         Box(Modifier.weight(1f)) {
@@ -252,6 +270,7 @@ fun MainContent(controllerStates: ControllerStatesViewModel) {
                     }
                 }
             }
+            Box(Modifier.weight(0.2f).fillMaxWidth().dragGestureFilter(PageChange()))
         }
     }
 }
@@ -262,10 +281,10 @@ fun Device(
     name: State<String>,
     nextPage: KFunction0<Unit>,
     previousPage: KFunction0<Unit>,
+    pin: KFunction0<Unit>,
     content: @Composable() (BoxScope.() -> Unit),
 ) {
     WithConstraints(Modifier.fillMaxSize()) {
-        val boxWidth = constraints.maxWidth
         Column() {
             Box(
                 Modifier.weight(0.1f).fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
@@ -273,14 +292,16 @@ fun Device(
                         dragObserver = object : DragObserver {
                             override fun onStop(velocity: Offset) {
                                 if (velocity.x > 0) {
-                                    nextPage()
-                                } else if (velocity.x < -boxWidth / 2) {
                                     previousPage()
+                                } else if (velocity.x < 0) {
+                                    nextPage()
                                 }
                                 super.onStop(velocity)
                             }
                         }
-                    )
+                    ).longPressGestureFilter {
+                        pin()
+                    }
             ) {
                 val deviceName by name
 

@@ -27,6 +27,12 @@ class DeviceState(
             sendToBitwig.send("previous,$device")
         }
     }
+
+    fun pin() {
+        CoroutineScope(Dispatchers.IO).launch {
+            sendToBitwig.send("pin,$device")
+        }
+    }
 }
 
 data class ControllerKey(val device: Int, val control: Int)

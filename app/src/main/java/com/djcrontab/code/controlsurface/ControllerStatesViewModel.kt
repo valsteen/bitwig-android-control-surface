@@ -7,7 +7,8 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collect
 
-val DEVICES = 12
+val DEVICES_PER_PAGE = 10
+val PAGES = 2
 
 class ControllerStatesViewModel : ViewModel() {
     private val controllerStates = ControllerStates()
@@ -24,7 +25,7 @@ class ControllerStatesViewModel : ViewModel() {
     init {
         val sendToBitwig = Channel<String>(1000);
 
-        for (device in 0 until DEVICES) {
+        for (device in 0 until DEVICES_PER_PAGE * PAGES) {
             deviceStates.add(DeviceState(device, sendToBitwig))
             for (control in 0..7) {
                 val controlState =
