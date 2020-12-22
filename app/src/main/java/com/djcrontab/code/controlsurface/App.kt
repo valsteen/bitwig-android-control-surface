@@ -300,6 +300,9 @@ fun Device(
     content: @Composable() (BoxScope.() -> Unit),
 ) {
     WithConstraints(Modifier.fillMaxSize()) {
+        val center = constraints.maxWidth / 2
+        var pressIndicatorDirectionIsNext = false
+
         Column() {
             Box(
                 Modifier.weight(0.1f).fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
@@ -316,14 +319,30 @@ fun Device(
                         }
                     ).longPressGestureFilter {
                         pin()
+                    }.pressIndicatorGestureFilter(onStart = {
+                        pressIndicatorDirectionIsNext = it.x < center
+                    }, onStop = {
+                        if (pressIndicatorDirectionIsNext) {
+                            nextPage()
+                        } else {
+                            previousPage()
+                        }
                     }
+                    )
             ) {
                 val deviceName by name
                 val deviceColor by color
                 val playing by isPlaying
 
-                Box(Modifier.padding(start=10.dp).height(5.dp).width(1.dp).background(color = deviceColor).align(Alignment.CenterStart))
-                Box(Modifier.padding(end=10.dp).height(5.dp).width(1.dp).align(Alignment.CenterEnd).background(color = if (playing) colorResource(id = R.color.encodertext) else Color.Black))
+                Box(
+                    Modifier.padding(start = 10.dp).height(5.dp).width(1.dp)
+                        .background(color = deviceColor).align(Alignment.CenterStart)
+                )
+                Box(
+                    Modifier.padding(end = 10.dp).height(5.dp).width(1.dp)
+                        .align(Alignment.CenterEnd)
+                        .background(color = if (playing) colorResource(id = R.color.encodertext) else Color.Black)
+                )
 
                 Text(
                     deviceName,
