@@ -30,19 +30,49 @@ import kotlin.math.sin
 import kotlin.reflect.KFunction0
 
 
+
 @Composable
 fun Encoder(
     controllerState: ControllerState,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val name by controllerState.name.collectAsState("")
-    val displayValue by controllerState.displayValue.collectAsState("")
+    val remoteDisplayValue by controllerState.displayValue.collectAsState("")
+    val remoteValue by controllerState.parameterValue.collectAsState(0f)
     val touched by controllerState.touched.observeAsState(false)
+    var displayMode by controllerState.displayMode
+
+    val displayValue = when (displayMode) {
+        ValueDisplayMode.REMOTE -> remoteDisplayValue
+        ValueDisplayMode.NOTE -> {
+            val value = (remoteValue * 127f).toInt()
+            val note = NOTES[value % 12]
+            val octave = value / 12 - 2
+            "$note$octave"
+        }
+        ValueDisplayMode.BYTE -> {
+            val value = (remoteValue * 127f).toInt()
+            "$value"
+        }
+    }
+
+
+    fun changeDisplayMode() {
+        displayMode = when (displayMode) {
+            ValueDisplayMode.REMOTE -> ValueDisplayMode.NOTE
+            ValueDisplayMode.NOTE -> ValueDisplayMode.BYTE
+            ValueDisplayMode.BYTE -> ValueDisplayMode.REMOTE
+        }
+    }
 
     Column(Modifier.background(if (touched) colorResource(id = R.color.encodertouched) else Color.Black)) {
-
         Text(
-            modifier = Modifier.weight(2.5f).fillMaxWidth(),
+            modifier = Modifier.weight(2.5f).fillMaxWidth().dragGestureFilter(dragObserver = object : DragObserver {
+                override fun onStop(velocity: Offset) {
+                    changeDisplayMode()
+                    super.onStop(velocity)
+                }
+            }),
             textAlign = TextAlign.Center,
             text = name,
             color = colorResource(id = R.color.encodertext),
@@ -50,7 +80,12 @@ fun Encoder(
         )
 
         Text(
-            modifier = Modifier.weight(3f).fillMaxWidth().padding(bottom = 4.dp),
+            modifier = Modifier.weight(3f).fillMaxWidth().padding(bottom = 4.dp).dragGestureFilter(dragObserver = object : DragObserver {
+                override fun onStop(velocity: Offset) {
+                    changeDisplayMode()
+                    super.onStop(velocity)
+                }
+            }),
             textAlign = TextAlign.Center,
             text = displayValue,
             color = colorResource(id = R.color.encodertext),
@@ -62,7 +97,6 @@ fun Encoder(
         Spacer(modifier = Modifier.preferredHeight(3.dp).weight(1.9f))
     }
 }
-
 
 @Composable
 fun Odometer(modifier: Modifier = Modifier, controllerState: ControllerState) {
