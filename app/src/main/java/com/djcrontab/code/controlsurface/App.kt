@@ -336,6 +336,7 @@ fun Device(
     WithConstraints(Modifier.fillMaxSize()) {
         val center = constraints.maxWidth / 2
         var pressIndicatorDirectionIsNext = false
+        var pressedAt : Long = 0
 
         Column() {
             Box(
@@ -351,11 +352,15 @@ fun Device(
                                 super.onStop(velocity)
                             }
                         }
-                    ).longPressGestureFilter {
-                        pin()
-                    }.pressIndicatorGestureFilter(onStart = {
+                    ).pressIndicatorGestureFilter(onStart = {
+                        pressedAt = System.currentTimeMillis()
                         pressIndicatorDirectionIsNext = it.x < center
                     }, onStop = {
+                        if (System.currentTimeMillis() - pressedAt > 1000) {
+                            // pressIndicatorGestureFilter eats up events for longPressGestureFilter,
+                            // so re-implement
+                            pin()
+                        }
                         if (pressIndicatorDirectionIsNext) {
                             nextPage()
                         } else {
